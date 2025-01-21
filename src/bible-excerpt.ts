@@ -1,17 +1,27 @@
-import { LitElement, css, html, PropertyValues, TemplateResult } from 'lit';
+import { LitElement, css, html, PropertyValues, TemplateResult, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { until } from 'lit/directives/until.js';
+import { unsafeStatic } from 'lit/static-html.js';
 
 const TRANSLATIONS_ENDPOINT = 'https://bolls.life/static/bolls/app/views/languages.json';
 const BOOKS_ENDPOINT = 'https://bolls.life/static/bolls/app/views/translations_books.json';
 
 declare interface BVerse {
   pk: number;
-  translation: string;
-  book: number;
   chapter: number;
   verse: number;
   text: string;
+}
+
+declare interface BSingleVerse extends BVerse {
+  translation: string;
+  book: number;
+}
+
+declare interface BChapterVerse extends BVerse {
+  comment?: string;
 }
 
 declare interface BTranslation {
@@ -41,7 +51,7 @@ declare type BBooks = {
   [translation in BTranslation["short_name"]]: BBook[]
 }
 
-declare type BVerses = BVerse[];
+declare type BChapterVerses = BChapterVerse[];
 
 const spreadNumbers = (numlist: string) => numlist.split(',')
   .reduce((numRanges: number[], entry) => {
@@ -55,19 +65,17 @@ const spreadNumbers = (numlist: string) => numlist.split(',')
     return numRanges;
   }, []);
 
-const bibleVerse = (verse: BVerse) => html`<p class="verse" pk="${verse.pk}" chapter="${verse.chapter}" num="${verse.verse}">${verse.text}</p>`;
-
 @customElement('bible-excerpt')
 export class BibleExcerpt extends LitElement {
   static bBible = Promise.all([
     fetch(TRANSLATIONS_ENDPOINT).then<BLanguages>(res => res.json()),
     fetch(BOOKS_ENDPOINT).then<BBooks>(res => res.json())
   ]);
-  @property({ type: Boolean }) manual: boolean = false;
+  @property({ type: Boolean }) selectTranslation: boolean = false;
   @property({ type: String }) translation: string = 'UBIO';
   @property({ type: String }) book: number = 43;
   @property({ type: Number }) chapter: number = 3;
-  @property({ type: String }) verses: string = '16';
+  @property({ type: String }) verses?: string;
 
   private renderManualModeControls(langs: BLanguages) {
     return html`<select id="translations" name="translations" @change=${(e: Event) => { let selector = e.target as HTMLSelectElement; this.translation = selector.value }}>
@@ -82,12 +90,24 @@ export class BibleExcerpt extends LitElement {
   </select>`
   }
 
+  private bChapterVerse(verse: BChapterVerse) {
+    return html`<p 
+      class="verse" 
+      pk="${verse.pk}" 
+      chapter="${verse.chapter}" 
+      num="${verse.verse}" comment="${ifDefined(verse.comment)}"
+      >${verse.text}</p>`
+  }
+
   render() {
-    return html`${until(BibleExcerpt.bBible.then(([langs, books]) => {
-      if (this.manual) return this.renderManualModeControls(langs)
-    }))}
+    return html`
+    ${until(BibleExcerpt.bBible.then(([langs, books]) => html`
+    <h5>${books[this.translation][this.book-1].name} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h5>
+    ${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}
+    `))}
     ${until(
-      BibleExcerpt.bBible.then(([_langs, books]) => {
+      BibleExcerpt.bBible.then(([_langs, books]) => 
+      {
         if (this.translation in books) {
           return fetch(
             `https://bolls.life/get-chapter/${this.translation}/${this.book}/${this.chapter}/`,
@@ -97,11 +117,11 @@ export class BibleExcerpt extends LitElement {
               headers: { 'Content-Type': 'application/json', }
             }
           )
-            .then<BVerses>((res) => res.json())
+            .then<BChapterVerses>((res) => res.json())
             .then(verses =>
-              spreadNumbers(this.verses)
+              spreadNumbers(this.verses ? this.verses : "1-"+verses.length)
                 .map(vnum => verses[vnum - 1])
-                .map(verse => bibleVerse(verse)))
+                .map(verse => this.bChapterVerse(verse)))
             .catch(console.error);
         } else {
           return [html`Помилка: перекладу не знайдено`]
@@ -114,6 +134,9 @@ export class BibleExcerpt extends LitElement {
   static styles = css`
   :host {
     padding: 0.5em;
+    margin: 1em;
+    border: solid 1px #555;
+    border-radius: 0.5em;
   }
   .verse::before {
     content: attr(num);
@@ -122,7 +145,23 @@ export class BibleExcerpt extends LitElement {
     font-weight: 700
   }
   .verse {
-    margin: 0.5em 0;
+    max-width: 50em;
+    margin: 0.2em 0;
+  }
+  .verse:hover {
+    background-color: #555;
+  }
+  .verse[comment]::after {
+    background: #bbb;
+    color: black;
+    border-radius: 0.5em;
+    position: absolute;
+    right: 1em;
+    content: "*"
+  }
+  .verse[comment]:hover::after {
+    display: block;
+    content: attr(comment)
   }
   `;
 }
