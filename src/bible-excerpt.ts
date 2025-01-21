@@ -1,5 +1,6 @@
 import { LitElement, css, html, PropertyValues, TemplateResult, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { until } from 'lit/directives/until.js';
@@ -76,6 +77,7 @@ export class BibleExcerpt extends LitElement {
   @property({ type: String }) book: number = 43;
   @property({ type: Number }) chapter: number = 3;
   @property({ type: String }) verses?: string;
+  @property({ type: String }) hilightVerses?: string;
 
   private renderManualModeControls(langs: BLanguages) {
     return html`<select id="translations" name="translations" @change=${(e: Event) => { let selector = e.target as HTMLSelectElement; this.translation = selector.value }}>
@@ -91,12 +93,13 @@ export class BibleExcerpt extends LitElement {
   }
 
   private bChapterVerse(verse: BChapterVerse) {
+    let hilighted = spreadNumbers(this.hilightVerses || "");
     return html`<p 
-      class="verse" 
+      class="${classMap({verse: true, hilight: hilighted.includes(verse.verse)})}"
       pk="${verse.pk}" 
       chapter="${verse.chapter}" 
-      num="${verse.verse}" comment="${ifDefined(verse.comment)}"
-      >${verse.text}</p>`
+      num="${verse.verse}"
+      >${verse.text}${verse.comment ? html`<b>*</b><span class="comment">* - ${unsafeHTML(verse.comment)}</span>` : nothing}</p>`
   }
 
   render() {
@@ -148,20 +151,24 @@ export class BibleExcerpt extends LitElement {
     max-width: 50em;
     margin: 0.2em 0;
   }
+
+  .verse.hilight {
+    background-color: #765;
+  } 
   .verse:hover {
     background-color: #555;
   }
-  .verse[comment]::after {
+  span.comment {
+    display: block;
     background: #bbb;
     color: black;
     border-radius: 0.5em;
+    height: 0px;
     position: absolute;
-    right: 1em;
-    content: "*"
+    overflow: hidden;
   }
-  .verse[comment]:hover::after {
-    display: block;
-    content: attr(comment)
+  .verse:hover span.comment {
+    height: auto;
   }
   `;
 }
