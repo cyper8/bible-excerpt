@@ -1,10 +1,8 @@
-import { LitElement, css, html, PropertyValues, TemplateResult, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { LitElement, css, html, nothing } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { ifDefined } from 'lit/directives/if-defined.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { until } from 'lit/directives/until.js';
-import { unsafeStatic } from 'lit/static-html.js';
 
 const TRANSLATIONS_ENDPOINT = 'https://bolls.life/static/bolls/app/views/languages.json';
 const BOOKS_ENDPOINT = 'https://bolls.life/static/bolls/app/views/translations_books.json';
@@ -94,12 +92,23 @@ export class BibleExcerpt extends LitElement {
 
   private bChapterVerse(verse: BChapterVerse) {
     let hilighted = spreadNumbers(this.hilightVerses || "");
-    return html`<p 
+    return html`<input type=radio name="note" id="verse${verse.verse}" class="note" />
+    <label for="verse${verse.verse}">
+      <p 
       class="${classMap({verse: true, hilight: hilighted.includes(verse.verse)})}"
       pk="${verse.pk}" 
       chapter="${verse.chapter}" 
       num="${verse.verse}"
-      >${verse.text}${verse.comment ? html`<b>*</b><span class="comment">* - ${unsafeHTML(verse.comment)}</span>` : nothing}</p>`
+      >
+          ${verse.text}
+          ${verse.comment 
+            ? html`<b>&darr;</b>  
+            <span class="comment">
+              ${unsafeHTML(verse.comment)}
+            </span>` 
+            : nothing}
+      </p>
+    </label>`
   }
 
   render() {
@@ -151,7 +160,9 @@ export class BibleExcerpt extends LitElement {
     max-width: 50em;
     margin: 0.2em 0;
   }
-
+  input.note {
+    display: none
+  }
   .verse.hilight {
     background-color: #765;
   } 
@@ -160,14 +171,17 @@ export class BibleExcerpt extends LitElement {
   }
   span.comment {
     display: block;
-    background: #bbb;
+    background: #eee;
     color: black;
-    border-radius: 0.5em;
+    position: fixed;
+    left: 0px;
     height: 0px;
-    position: absolute;
+    width: 100%;
+    bottom: 0px;
     overflow: hidden;
   }
-  .verse:hover span.comment {
+
+  input:checked+label span.comment {
     height: auto;
   }
   `;
