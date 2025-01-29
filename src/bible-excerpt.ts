@@ -52,15 +52,14 @@ declare type BBooks = {
 
 declare type BChapterVerses = BChapterVerse[];
 
-const spreadNumbers = (numlist: string) => numlist.split(',')
+const spreadNumbers = (numlist: string, length?: number) => numlist.split(',')
   .reduce((numRanges: number[], entry) => {
     let boundaries = entry.trim().split('-');
-    let first = parseInt(boundaries[0].trim());
-    let last = parseInt(boundaries[boundaries.length - 1].trim());
-    while (first < last) {
+    let first = parseInt(boundaries[0]) || 1;
+    let last = parseInt(boundaries[boundaries.length-1]) || length || first;
+    while (entry && first <= last) {
       numRanges.push(first++);
-    }
-    numRanges.push(parseInt(boundaries[boundaries.length - 1].trim()));
+    } 
     return numRanges;
   }, []);
 
@@ -74,8 +73,8 @@ export class BibleExcerpt extends LitElement {
   @property({ type: String }) translation: string = 'UBIO';
   @property({ type: String }) book: number = 43;
   @property({ type: Number }) chapter: number = 3;
-  @property({ type: String }) verses?: string;
-  @property({ type: String }) hilightVerses?: string;
+  @property({ type: String }) verses: string = '';
+  @property({ type: String }) hilightVerses: string = '';
 
   private renderManualModeControls(langs: BLanguages) {
     return html`<select id="translations" name="translations" @change=${(e: Event) => { let selector = e.target as HTMLSelectElement; this.translation = selector.value }}>
@@ -91,7 +90,7 @@ export class BibleExcerpt extends LitElement {
   }
 
   private bChapterVerse(verse: BChapterVerse) {
-    let hilighted = spreadNumbers(this.hilightVerses || "");
+    let hilighted = this.hilightVerses ? spreadNumbers(this.hilightVerses) : [];
     return html`<input type=radio name="note" id="verse${verse.verse}" class="note" />
     <label for="verse${verse.verse}">
       <p 
@@ -132,7 +131,7 @@ export class BibleExcerpt extends LitElement {
           )
             .then<BChapterVerses>((res) => res.json())
             .then(verses =>
-              spreadNumbers(this.verses ? this.verses : "1-"+verses.length)
+              spreadNumbers(this.verses ? this.verses : "1-", verses.length)
                 .map(vnum => verses[vnum - 1])
                 .map(verse => this.bChapterVerse(verse)))
             .catch(console.error);
