@@ -104,6 +104,7 @@ export class BibleExcerpt extends LitElement {
           ${verse.comment 
             ? html`<b>&darr;</b>  
             <span class="comment">
+            <hr />
               ${unsafeHTML(verse.comment)}
             </span>` 
             : nothing}
@@ -144,8 +145,9 @@ export class BibleExcerpt extends LitElement {
   }
 
   static styles = css`
+  * {box-sizing: border-box}
   :host {
-    padding: 0.5em;
+    padding: 2.5em;
     margin: 1em;
     border: solid 1px #555;
     border-radius: 0.5em;
@@ -170,19 +172,20 @@ export class BibleExcerpt extends LitElement {
     background-color: #555;
   }
   span.comment {
-    display: block;
+    display: none;
     background: #eee;
     color: black;
     position: fixed;
     left: 0px;
-    height: 0px;
+    height: auto;
     width: 100%;
     bottom: 0px;
     overflow: hidden;
+    padding: 1em;
   }
 
   input:checked+label span.comment {
-    height: auto;
+    display: inline-block;
   }
   `;
 }
