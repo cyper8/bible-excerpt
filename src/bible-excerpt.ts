@@ -71,8 +71,8 @@ export class BibleExcerpt extends LitElement {
   ]);
   @property({ type: Boolean }) selectTranslation: boolean = false;
   @property({ type: String }) translation: string = 'UBIO';
-  @property({ type: String }) book: number = 43;
-  @property({ type: Number }) chapter: number = 3;
+  @property({ type: String }) book: string = 'Буття';
+  @property({ type: Number }) chapter: string = '3';
   @property({ type: String }) verses: string = '';
   @property({ type: String }) hilightVerses: string = '';
 
@@ -114,27 +114,30 @@ export class BibleExcerpt extends LitElement {
   render() {
     return html`
     ${until(BibleExcerpt.bBible.then(([langs, books]) => html`
-    <h5>${books[this.translation][this.book-1].name} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h5>
+    <h5>${this.book} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h5>
     ${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}
     `))}
     ${until(
       BibleExcerpt.bBible.then(([_langs, books]) => 
       {
         if (this.translation in books) {
-          return fetch(
-            `https://bolls.life/get-chapter/${this.translation}/${this.book}/${this.chapter}/`,
-            {
-              method: 'GET',
-              mode: 'cors',
-              headers: { 'Content-Type': 'application/json', }
-            }
-          )
-            .then<BChapterVerses>((res) => res.json())
-            .then(verses =>
-              spreadNumbers(this.verses ? this.verses : "1-", verses.length)
-                .map(vnum => verses[vnum - 1])
-                .map(verse => this.bChapterVerse(verse)))
-            .catch(console.error);
+          let booknum = books[this.translation].findIndex(book => book.name === this.book)+1;
+          if (booknum)
+            return fetch(
+              `https://bolls.life/get-chapter/${this.translation}/${booknum}/${this.chapter}/`,
+              {
+                method: 'GET',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json', }
+              }
+            )
+              .then<BChapterVerses>((res) => res.json())
+              .then(verses =>
+                spreadNumbers(this.verses ? this.verses : "1-", verses.length)
+                  .map(vnum => verses[vnum - 1])
+                  .map(verse => this.bChapterVerse(verse)))
+              .catch(console.error);
+            else return [html`помилка запиту`]
         } else {
           return [html`Помилка: перекладу не знайдено`]
         }
