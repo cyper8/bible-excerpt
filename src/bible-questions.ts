@@ -1,33 +1,46 @@
-import { LitElement, html } from "lit";
+import { LitElement, PropertyValueMap, TemplateResult, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { until } from "lit/directives/until.js";
 import { marked } from "marked";
+import "./bible-excerpt.js";
 
 @customElement('bible-questions')
 export class BibleQuestions extends LitElement {
-  @property({type: String}) rawContent: string = this.innerHTML;
-  @state()
-  private selectVerses: string = '';
-  private book: string = '';
-  private chapter: number = 0;
 
-  connectedCallback(): void {
-    let tempRoot = document.createElement('div');
-    Promise.resolve(marked.parse(this.rawContent))
-    .then(html => {
-      tempRoot.innerHTML = html;
-      let header = tempRoot.querySelector('h1');
-      header?.textContent?.split(',')
-      .reduce((refs, chunk, i, a) => {
-        let chapts = chunk.trim().match(/[0-9, :-]+$/)?.[0];
-        let book = chunk.trim().replace(chapts || '', '');
-        
-      })
+  @property({ type: Object }) content?: TemplateResult;
+
+  private incertExcerpts(): void {
+    let headers = this.shadowRoot?.querySelectorAll('h1');
+    headers?.forEach(header => {
+      let refText = header.textContent;
+      if (refText) {
+        let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
+        let book = refText.replace(ref, '').trim();
+        let [chapter, verses] = ref.split(':',2);
+        let excerpt = document.createElement('bible-excerpt');
+        excerpt.setAttribute('book', book);
+        excerpt.setAttribute('chapter', chapter);
+        if (verses) excerpt.setAttribute("verses", verses);
+        header.replaceWith(excerpt);
+        //tempRoot.appendChild(excerpt);
+      }
     })
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    Promise.resolve(marked.parse(this.innerHTML))
+    .then(htm => this.content = html`${unsafeHTML(htm)}`)
+  }
+
+  protected updated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has('content')) {
+      this.incertExcerpts();
+    }
+  }
+
   protected render() {
-    return html`${until(Promise.resolve(marked.parse(this.rawContent)).then(html => unsafeHTML(html)), this.rawContent)}`
+    return html`${this.content}`
   }
 }
