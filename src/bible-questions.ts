@@ -1,7 +1,6 @@
 import { LitElement, PropertyValueMap, TemplateResult, html } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { until } from "lit/directives/until.js";
 import { marked } from "marked";
 import "./bible-excerpt.js";
 
