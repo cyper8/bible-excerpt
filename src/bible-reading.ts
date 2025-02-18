@@ -70,4 +70,5 @@ export class BibleReading extends LitElement {
     </bible-questions>`
     : nothing}`
   }
+
 }
