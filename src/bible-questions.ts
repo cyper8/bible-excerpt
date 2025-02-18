@@ -6,7 +6,7 @@ import "./bible-excerpt.js";
 
 @customElement('bible-questions')
 export class BibleQuestions extends LitElement {
-  @property({ type: Date }) date: Date = new Date();
+  @property({ type: String }) date: string = (new Date()).toISOString();
   @property({ type: String }) reading: string = '';
   @property({ type: String }) questions: string = '';
   @state() content?: TemplateResult;
@@ -35,7 +35,7 @@ export class BibleQuestions extends LitElement {
 
   protected render() {
     return html`
-    <h3>${this.date.toLocaleDateString(navigator.language, {dateStyle: "medium"})}</h3>
+    <h3>${this.date}</h3>
     ${this.readingRefs.length 
     ?  html`<bible-excerpt book="${this.readingRefs[0]}" chapter="${this.readingRefs[1]}" verses="${this.readingRefs[2]}"></bible-excerpt>`
     :  nothing
