@@ -24,11 +24,11 @@ export class BibleQuestions extends LitElement {
           excerpt.setAttribute('chapter', chapter);
           if (verses) excerpt.setAttribute("verses", verses);
           header.replaceWith(excerpt);
-          var node, textIterator = document.createNodeIterator(
+          var node: Text, textIterator = document.createNodeIterator(
             this.shadowRoot, 
             NodeFilter.SHOW_TEXT, 
             (node: Node) => {
-              let search = node.textContent?.match(/\([^\(\)]*вірш[^\(\)]*\)/igm);
+              let search = node.textContent?.match(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
               if (search?.length) {
                 return NodeFilter.FILTER_ACCEPT
               } else {
@@ -36,17 +36,25 @@ export class BibleQuestions extends LitElement {
               }
             }
           );
-          while (node = textIterator.nextNode()) {
-            var refs = node.textContent?.match((/\([^\(\)]*вірш[^\(\)]*\)/igm));
-            let vs = refs!.map(match => 
-              match.match(/[0-9-]+/)?.filter(v => v).join(',')
-            ).filter(v => v).join(',');
-            node.parentElement?.addEventListener('mouseover', (_event) => {
-              excerpt.hilightVerses = vs;
-            })
-            node.parentElement?.addEventListener('mouseout', (_event) => {
-              excerpt.hilightVerses = '';
-            })
+          while (node = textIterator.nextNode() as Text) {
+            var refs = node.textContent?.matchAll(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
+            if (refs) {
+              for (const match of refs) {
+                let ref = node.splitText(match.index);
+                let rest = ref.splitText(match[0].length);
+                let u = document.createElement('u');
+                u.appendChild(ref);
+                node.parentElement?.insertBefore(u,rest);
+                u.className="ref-verses";
+                let vs = match[0].match(/[0-9-]+/g)?.filter(v => v).join(',');
+                u.addEventListener('mouseover', (_event) => {
+                  excerpt.hilightVerses = vs || '';
+                })
+                u.addEventListener('mouseout', (_event) => {
+                  excerpt.hilightVerses = '';
+                })
+              }
+            }
           }
         }
       }
