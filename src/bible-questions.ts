@@ -1,44 +1,81 @@
-import { LitElement, PropertyValueMap, TemplateResult, html } from "lit";
+import { LitElement, PropertyValueMap, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { marked } from "marked";
 import "./bible-excerpt.js";
+import { BibleExcerpt } from "./bible-excerpt.js";
 
 @customElement('bible-questions')
 export class BibleQuestions extends LitElement {
+  @property({type: String}) content: string = '';
 
-  @property({ type: Object }) content?: TemplateResult;
-
-  private incertExcerpts(): void {
-    let headers = this.shadowRoot?.querySelectorAll('h1');
-    headers?.forEach(header => {
-      let refText = header.textContent;
-      if (refText) {
-        let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
-        let book = refText.replace(ref, '').trim();
-        let [chapter, verses] = ref.split(':',2);
-        let excerpt = document.createElement('bible-excerpt');
-        excerpt.setAttribute('book', book);
-        excerpt.setAttribute('chapter', chapter);
-        if (verses) excerpt.setAttribute("verses", verses);
-        header.replaceWith(excerpt);
+  private processContent() {
+    if (this.shadowRoot) {
+      var excerpt: BibleExcerpt;
+      let header = this.shadowRoot.querySelector('h1');
+      if (header) {
+        let refText = header.textContent;
+        if (refText) {
+          let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
+          let book = refText.replace(ref, '').trim();
+          let [chapter, verses] = ref.split(':',2);
+          excerpt = document.createElement('bible-excerpt');
+          excerpt.setAttribute('book', book);
+          excerpt.setAttribute('chapter', chapter);
+          if (verses) excerpt.setAttribute("verses", verses);
+          header.replaceWith(excerpt);
+          var node, textIterator = document.createNodeIterator(
+            this.shadowRoot, 
+            NodeFilter.SHOW_TEXT, 
+            (node: Node) => {
+              let search = node.textContent?.match(/\([^\(\)]*вірш[^\(\)]*\)/igm);
+              if (search?.length) {
+                return NodeFilter.FILTER_ACCEPT
+              } else {
+                return NodeFilter.FILTER_REJECT
+              }
+            }
+          );
+          while (node = textIterator.nextNode()) {
+            var refs = node.textContent?.match((/\([^\(\)]*вірш[^\(\)]*\)/igm));
+            let vs = refs!.map(match => 
+              match.match(/[0-9-]+/)?.filter(v => v).join(',')
+            ).filter(v => v).join(',');
+            node.parentElement?.addEventListener('mouseover', (_event) => {
+              excerpt.hilightVerses = vs;
+            })
+            node.parentElement?.addEventListener('mouseout', (_event) => {
+              excerpt.hilightVerses = '';
+            })
+          }
+        }
       }
-    })
+    }
   }
 
   connectedCallback(): void {
     super.connectedCallback();
-    Promise.resolve(marked.parse(this.innerHTML))
-    .then(htm => this.content = html`${unsafeHTML(htm)}`)
+    this.content = marked.parse(this.innerHTML, {async: false});
   }
 
   protected updated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
-    if (_changedProperties.has('content')) {
-      this.incertExcerpts();
+    if (_changedProperties.has("content")) {
+      if (this.content) {
+        this.processContent();
+      }
     }
   }
 
-  protected render() {
-    return html`${this.content}`
+  protected render(): unknown {
+    return html`${unsafeHTML(this.content)}`
   }
+
+  static get styles() {
+    return css`
+    :host {
+      display: block
+    }
+    `
+  }
+
 }
