@@ -19,7 +19,7 @@ export class BibleQuestions extends LitElement {
           let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
           let book = refText.replace(ref, '').trim();
           let [chapter, verses] = ref.split(':',2);
-          excerpt = document.createElement('bible-excerpt');
+          excerpt = document.createElement('bible-excerpt') as BibleExcerpt;
           excerpt.setAttribute('book', book);
           excerpt.setAttribute('chapter', chapter);
           if (verses) excerpt.setAttribute("verses", verses);
