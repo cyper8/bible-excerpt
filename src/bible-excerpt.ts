@@ -1,5 +1,5 @@
-import { LitElement, css, html, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, PropertyValueMap, css, html, nothing } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { until } from 'lit/directives/until.js';
@@ -69,6 +69,7 @@ export class BibleExcerpt extends LitElement {
     fetch(TRANSLATIONS_ENDPOINT).then<BLanguages>(res => res.json()),
     fetch(BOOKS_ENDPOINT).then<BBooks>(res => res.json())
   ]);
+  @state() private excerpt: BChapterVerses = [];
   @property({ type: Boolean }) selectTranslation: boolean = false;
   @property({ type: String }) translation: string = 'UBIO';
   @property({ type: String }) book: string = 'Буття';
@@ -89,12 +90,11 @@ export class BibleExcerpt extends LitElement {
   </select>`
   }
 
-  private bChapterVerse(verse: BChapterVerse) {
-    let hilighted = this.hilightVerses ? spreadNumbers(this.hilightVerses) : [];
+  private bChapterVerse(verse: BChapterVerse, hilight = false) {
     return html`<input type=radio name="note" id="verse${verse.verse}" class="note" />
     <label for="verse${verse.verse}">
       <p 
-      class="${classMap({verse: true, hilight: hilighted.includes(verse.verse)})}"
+      class="${classMap({verse: true, hilight})}"
       pk="${verse.pk}" 
       chapter="${verse.chapter}" 
       num="${verse.verse}"
@@ -111,44 +111,55 @@ export class BibleExcerpt extends LitElement {
     </label>`
   }
 
+  private bExcerpt(chapter: BChapterVerses, verses: string, hilight: string = '') {
+    let hilighted = spreadNumbers(hilight);
+    return spreadNumbers(verses ? verses : "1-", chapter.length)
+    .map(vnum => chapter[vnum - 1]).filter(v => v)
+    .map(v => this.bChapterVerse(v, hilighted.includes(v?.verse)))
+  }
+
+  protected willUpdate(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has("book")
+      || _changedProperties.has("chapter")
+      || _changedProperties.has("verses")) {
+        BibleExcerpt.bBible
+        .then(([_langs, books]) => {
+          if (this.translation in books) {
+            let booknum = books[this.translation].findIndex(book => book.name === this.book)+1;
+            if (booknum)
+              return fetch(
+                `https://bolls.life/get-chapter/${this.translation}/${booknum}/${this.chapter}/`,
+                {
+                  method: 'GET',
+                  mode: 'cors',
+                  headers: { 'Content-Type': 'application/json', }
+                }
+              )
+                .then<BChapterVerses>((res) => res.json())
+                .then(verses =>
+                  {
+                    this.excerpt = verses;
+                  })
+              else throw new Error(`помилка запиту`)
+          } else throw new Error(`Помилка: перекладу не знайдено`)
+        })
+        .catch(console.error);
+      }
+  }
+
   render() {
-    return html`
-    ${until(BibleExcerpt.bBible.then(([langs, books]) => html`
-    <h5>${this.book} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h5>
-    ${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}
-    `))}
+    return html`<h1>${this.book} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h1>
     ${until(
-      BibleExcerpt.bBible.then(([_langs, books]) => 
-      {
-        if (this.translation in books) {
-          let booknum = books[this.translation].findIndex(book => book.name === this.book)+1;
-          if (booknum)
-            return fetch(
-              `https://bolls.life/get-chapter/${this.translation}/${booknum}/${this.chapter}/`,
-              {
-                method: 'GET',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json', }
-              }
-            )
-              .then<BChapterVerses>((res) => res.json())
-              .then(verses =>
-                spreadNumbers(this.verses ? this.verses : "1-", verses.length)
-                  .map(vnum => verses[vnum - 1])
-                  .map(verse => this.bChapterVerse(verse)))
-              .catch(console.error);
-            else return [html`помилка запиту`]
-        } else {
-          return [html`Помилка: перекладу не знайдено`]
-        }
-      }),
-      html`Завантаження...`
-    )}`;
+      BibleExcerpt.bBible.then(([langs, _books]) => 
+        html`${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}`), 
+      nothing)}
+    ${this.bExcerpt(this.excerpt, this.verses, this.hilightVerses)}`;
   }
 
   static styles = css`
   * {box-sizing: border-box}
   :host {
+    display: block;
     padding: 2.5em;
     margin: 1em;
     border: solid 1px #555;
