@@ -64,6 +64,14 @@ export class BibleQuestions extends LitElement {
     this.content = marked.parse(this.innerHTML, {async: false});
   }
 
+  protected willUpdate(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has("content")) {
+      if (this.content) {
+        this.content = marked.parse(this.content, {async: false});
+      }
+    }
+  }
+
   protected updated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
     if (_changedProperties.has("content")) {
       if (this.content) {
