@@ -37,6 +37,7 @@ export class BibleQuestions extends LitElement {
             }
           );
           while (node = textIterator.nextNode() as Text) {
+            if (node.parentElement?.className.includes('ref-verses')) continue;
             var refs = node.textContent?.matchAll(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
             if (refs) {
               for (const match of refs) {
@@ -47,11 +48,8 @@ export class BibleQuestions extends LitElement {
                 node.parentElement?.insertBefore(u,rest);
                 u.className="ref-verses";
                 let vs = match[0].match(/[0-9-]+/g)?.filter(v => v).join(',');
-                u.addEventListener('mouseover', (_event) => {
-                  excerpt.hilightVerses = vs || '';
-                })
-                u.addEventListener('mouseout', (_event) => {
-                  excerpt.hilightVerses = '';
+                u.addEventListener('click', (_event) => {
+                  excerpt.hilightVerses = excerpt.hilightVerses ? '' : vs || '';
                 })
               }
             }
@@ -82,6 +80,10 @@ export class BibleQuestions extends LitElement {
     return css`
     :host {
       display: block
+    }
+    .ref-verses {
+      color: #59f;
+      cursor: pointer;
     }
     `
   }
