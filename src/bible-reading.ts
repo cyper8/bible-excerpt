@@ -1,67 +1,122 @@
-import { LitElement, PropertyValueMap, html, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { LitElement, PropertyValueMap, css, html, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { marked } from "marked";
+import "./bible-excerpt.js";
+import "./bible-reading-calendar.js";
+import { BibleReadingCalendar, ReadingDateSelectedEvent } from "./bible-reading-calendar.js";
 import { BibleExcerpt } from "./bible-excerpt.js";
-import { BibleQuestions } from "./bible-questions.js";
-import { BibleReadingHistoryButton, ReadingDateSelectedEvent } from "./bible-reading-history-button.js";
-import './bible-questions.js';
-import './bible-reading-history-button.js';
 
 @customElement('bible-reading')
 export class BibleReading extends LitElement {
-  
-  @property({type: Date}) currentReadingDate?: Date;
-  @property({type: Number}) today: Date = new Date();
-  @property({type: Array}) reading: string = '';
 
-  // async fetchDataFor(today: Date): Promise<[Date, string] | undefined> {
-  //     var year = today.getFullYear();
-  //     let data: string | undefined;
-  //     for (var month = today.getMonth()+1;month>0; month--) {
-  //       for (var day = today.getDate();day>0;day--) {
-  //         data = await fetch(
-  //           `/${year}/${month}/${day}.md`, 
-  //           {
-  //             method: 'GET', 
-  //             redirect: 'error',
-  //             headers: {
-  //               'Content-Type': 'text/markdown',
-  //               'Accept': 'text/markdown'
-  //             }
-  //           }
-  //         ).then(res => res.ok ? res.text() : '');
-  //         if (data) return [new Date(year, month-1, day), data];
-  //       }
-  //     }
-  // }
-  
-  // protected updated(_changedProperties: PropertyValueMap<this> | Map<PropertyKey, unknown>): void {
-  //   if (_changedProperties.has("today")) {
-  //     this.fetchDataFor(this.today).then((res) => {
-  //       if (res) {
-  //         let [date, data] = res;
-  //         this.currentReadingDate = date;
-  //         this.reading = data;
-  //       }
-  //     })
-  //   }
-  // }
+  @state() book: string = '';
+  @state() chapter: string = '';
+  @state() verses: string = '';
 
-  protected render() {
-    return html`<bible-reading-history-button .date="${this.today}" @reading-date-selected="${(event: ReadingDateSelectedEvent) => {
-      this.currentReadingDate = event.detail.date;
-      this.reading = event.detail.reading;
-    }}"></bible-reading-history-button>
-    <bible-questions>${unsafeHTML(this.reading)}</bible-questions>`
+  @property({type: String}) translation: string = 'UBIO';
+  @property({type: String}) content: string = '';
+
+  private processContent() {
+    if (this.shadowRoot) {
+      let header = this.shadowRoot.querySelector('h1');
+      if (header) {
+        let refText = header.textContent;
+        if (refText) {
+          let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
+          this.book = refText.replace(ref, '').trim();
+          [this.chapter, this.verses] = ref.split(':',2);
+          var node: Text, textIterator = document.createNodeIterator(
+            this.shadowRoot, 
+            NodeFilter.SHOW_TEXT, 
+            (node: Node) => {
+              let search = node.textContent?.match(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
+              if (search?.length) {
+                return NodeFilter.FILTER_ACCEPT
+              } else {
+                return NodeFilter.FILTER_REJECT
+              }
+            }
+          );
+          while (node = textIterator.nextNode() as Text) {
+            if (node.parentElement?.className.includes('ref-verses')) continue;
+            var refs = node.textContent?.matchAll(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
+            if (refs) {
+              for (const match of refs) {
+                let ref = node.splitText(match.index);
+                let rest = ref.splitText(match[0].length);
+                let u = document.createElement('u');
+                u.appendChild(ref);
+                node.parentElement?.insertBefore(u,rest);
+                u.className="ref-verses";
+                let vs = match[0].match(/[0-9-]+/g)?.filter(v => v).join(',');
+                u.addEventListener('click', (_event) => {
+                  let excerpt = this.shadowRoot?.querySelector('bible-excerpt');
+                  if (excerpt)
+                  excerpt.hilightVerses = excerpt.hilightVerses ? '' : vs || '';
+                })
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.content = marked.parse(this.innerHTML, {async: false});
+  }
+
+  protected willUpdate(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has("content")) {
+      if (this.content) {
+        this.content = marked.parse(this.content, {async: false});
+      }
+    }
+  }
+
+  protected updated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has("content")) {
+      if (this.content) {
+        this.processContent();
+      }
+    }
+  }
+
+  protected render(): unknown {
+    return html`<bible-reading-calendar @reading-date-selected="${(event: ReadingDateSelectedEvent) => {
+                  this.content = event.detail.reading;
+                }}"></bible-reading-calendar>${
+      this.book && this.chapter
+      ? html`
+        <bible-excerpt
+          translation="${this.translation}" 
+          book="${this.book}" 
+          chapter="${this.chapter}" 
+          verses="${this.verses || ''}">
+        </bible-excerpt>`
+      : nothing
+    }${unsafeHTML(this.content)}`
+  }
+
+  static get styles() {
+    return css`
+    :host {
+      display: block
+    }
+    .ref-verses {
+      color: #59f;
+      cursor: pointer;
+    }
+    `
+  }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     'bible-excerpt': BibleExcerpt;
     'bible-reading': BibleReading;
-    'bible-questions': BibleQuestions;
-    'bible-reading-history-button': BibleReadingHistoryButton;
+    'bible-reading-calendar': BibleReadingCalendar;
   } 
 }
