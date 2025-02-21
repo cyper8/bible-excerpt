@@ -1,5 +1,6 @@
 import { LitElement, PropertyValueMap, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { classMap } from "lit/directives/class-map.js";
 
 export declare interface ReadingData {
   date: Date;
@@ -30,12 +31,14 @@ const genMonth = (data:string[][], currentReadingDate: Date) => {
   ];
   let month = currentReadingDate.getMonth();
   let year = currentReadingDate.getFullYear();
+  let theday = currentReadingDate.getDate();
   let day1 = new Date(year, month, 1); 
-  let offset = day1.getDay();
+  let offset = day1.getDay() || 7;
   let length = daysInMonth(month, year);
-  //let mdata = Array<string>(offset).fill('').concat(...data[month]);
   let gen: (ReadingData | undefined)[][] = [];
-  for (var w=0;w<Math.ceil((length+offset-1)/7); w++) {
+  let weeknum = Math.ceil((length+offset-1)/7);
+  if ((length+offset-1)%7 == 0) weeknum++;
+  for (var w=0;w<weeknum; w++) {
     gen[w]=[];
     for (var d=0;d<7;d++) {
       let id = (w*7+d)-offset+1;
@@ -46,13 +49,19 @@ const genMonth = (data:string[][], currentReadingDate: Date) => {
     }
   }
   
-  return html`<table>
+  return html`<table class="calendar">
   <thead><tr>${week.map(d => html`<th>${d}</th>`)}</tr></thead>
   <tbody>
     ${gen.map((w,wn) => html`<tr class="week" id="week${wn}">${
       w.map((d,dn) => {
         let date = (wn*7+dn+1)-(offset-1)
-        return html`<td class="day" id="day${dn}" alt="${d?.reading}">${date>0?date+'':''}</td>`
+        return html`<td class="${classMap({day:true,weekend:dn>4,empty: !(d)})}" id="day${dn}">${
+          date>0 && date<=length
+          ? (date === theday)
+            ? html`<b>${date}</b>`
+            : date+''
+          : nothing
+        }</td>`
       })
     }</tr>`)}
   </tbody>
@@ -192,9 +201,46 @@ export class BibleReadingCalendar extends LitElement {
       background-color: #eee;
       color: #242424;
       border-radius: 1em;
+      padding: 1em;
     }
     input#date-selector-switch:checked+.date-selector {
       display: block
+    }
+    .calendar {
+      border-radius: 0.2em;
+      border: none;
+      border-spacing: 0;
+      .day:hover {
+        background-color: #ccc;
+        &:not(.empty) {
+          background-color: #cdf;
+        }
+      }
+      .weekend, .empty {
+        background-color: #e0e0e0;
+        color: #464646;
+      }
+      tbody {
+        border-radius: 0.5em;
+      }
+      .week {
+        &:first-of-type .day {
+          &:first-of-type {
+            border-radius: 0.5em 0 0 0;
+          }
+          &:last-of-type {
+            border-radius: 0 0.5em 0 0;
+          }
+        }
+        &:last-of-type .day {
+          &:first-of-type {
+            border-radius: 0 0 0 0.5em;
+          }
+          &:last-of-type {
+            border-radius: 0 0 0.5em 0;
+          }
+        }
+      }
     }
     `
   }
