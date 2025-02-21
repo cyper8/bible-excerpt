@@ -1,29 +1,28 @@
-import { LitElement, PropertyValueMap, css, html } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { LitElement, PropertyValueMap, css, html, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { marked } from "marked";
 import "./bible-excerpt.js";
-import { BibleExcerpt } from "./bible-excerpt.js";
 
 @customElement('bible-questions')
 export class BibleQuestions extends LitElement {
+
+  @state() book: string = '';
+  @state() chapter: string = '';
+  @state() verses: string = '';
+
+  @property({type: String}) translation: string = 'UBIO';
   @property({type: String}) content: string = '';
 
   private processContent() {
     if (this.shadowRoot) {
-      var excerpt: BibleExcerpt;
       let header = this.shadowRoot.querySelector('h1');
       if (header) {
         let refText = header.textContent;
         if (refText) {
           let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
-          let book = refText.replace(ref, '').trim();
-          let [chapter, verses] = ref.split(':',2);
-          excerpt = document.createElement('bible-excerpt') as BibleExcerpt;
-          excerpt.setAttribute('book', book);
-          excerpt.setAttribute('chapter', chapter);
-          if (verses) excerpt.setAttribute("verses", verses);
-          header.replaceWith(excerpt);
+          this.book = refText.replace(ref, '').trim();
+          [this.chapter, this.verses] = ref.split(':',2);
           var node: Text, textIterator = document.createNodeIterator(
             this.shadowRoot, 
             NodeFilter.SHOW_TEXT, 
@@ -49,6 +48,8 @@ export class BibleQuestions extends LitElement {
                 u.className="ref-verses";
                 let vs = match[0].match(/[0-9-]+/g)?.filter(v => v).join(',');
                 u.addEventListener('click', (_event) => {
+                  let excerpt = this.shadowRoot?.querySelector('bible-excerpt');
+                  if (excerpt)
                   excerpt.hilightVerses = excerpt.hilightVerses ? '' : vs || '';
                 })
               }
@@ -81,7 +82,16 @@ export class BibleQuestions extends LitElement {
   }
 
   protected render(): unknown {
-    return html`${unsafeHTML(this.content)}`
+    return html`${
+      this.book && this.chapter
+      ? html`<bible-excerpt
+          translation="${this.translation}" 
+          book="${this.book}" 
+          chapter="${this.chapter}" 
+          verses="${this.verses || ''}">
+        </bible-excerpt>`
+      : nothing
+    }${unsafeHTML(this.content)}`
   }
 
   static get styles() {

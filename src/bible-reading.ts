@@ -9,16 +9,14 @@ import './bible-reading-calendar.js';
 @customElement('bible-reading')
 export class BibleReading extends LitElement {
   
-  @property({type: Date}) currentReadingDate?: Date;
-  @property({type: Number}) today: Date = new Date();
+  @property({type: String}) translation: string = 'UBIO';
   @property({type: Array}) reading: string = '';
 
   protected render() {
-    return html`<bible-reading-calendar .date="${this.today}" @reading-date-selected="${(event: ReadingDateSelectedEvent) => {
-      this.currentReadingDate = event.detail.date;
+    return html`<bible-reading-calendar @reading-date-selected="${(event: ReadingDateSelectedEvent) => {
       this.reading = event.detail.reading;
     }}"></bible-reading-calendar>
-    <bible-questions .content="${this.reading}"></bible-questions>`
+    <bible-questions translation="${this.translation}" .content="${this.reading}"></bible-questions>`
   }
 
 }

@@ -1,4 +1,4 @@
-import { LitElement, PropertyValueMap, css, html, nothing } from "lit";
+import { LitElement, PropertyValueMap, TemplateResult, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 
@@ -19,55 +19,6 @@ export const daysInMonth = (m0: number, y?: number) => {
   return d.getDate()
 }
 
-const genMonth = (data:string[][], currentReadingDate: Date) => {
-  const week = [
-    "Пн",
-    "Вт",
-    "Ср",
-    "Чт",
-    "Пт",
-    "Сб",
-    "Нд",
-  ];
-  let month = currentReadingDate.getMonth();
-  let year = currentReadingDate.getFullYear();
-  let theday = currentReadingDate.getDate();
-  let day1 = new Date(year, month, 1); 
-  let offset = day1.getDay() || 7;
-  let length = daysInMonth(month, year);
-  let gen: (ReadingData | undefined)[][] = [];
-  let weeknum = Math.ceil((length+offset-1)/7);
-  if ((length+offset-1)%7 == 0) weeknum++;
-  for (var w=0;w<weeknum; w++) {
-    gen[w]=[];
-    for (var d=0;d<7;d++) {
-      let id = (w*7+d)-offset+1;
-      gen[w][d]= (id>=0 && data[month] && data[month][id]) ? {
-        date: new Date(year, month, id+1),
-        reading: data[month][id]
-      } : undefined;
-    }
-  }
-  
-  return html`<table class="calendar">
-  <thead><tr>${week.map(d => html`<th>${d}</th>`)}</tr></thead>
-  <tbody>
-    ${gen.map((w,wn) => html`<tr class="week" id="week${wn}">${
-      w.map((d,dn) => {
-        let date = (wn*7+dn+1)-(offset-1)
-        return html`<td class="${classMap({day:true,weekend:dn>4,empty: !(d)})}" id="day${dn}">${
-          date>0 && date<=length
-          ? (date === theday)
-            ? html`<b>${date}</b>`
-            : date+''
-          : nothing
-        }</td>`
-      })
-    }</tr>`)}
-  </tbody>
-  </table>`
-}
-
 @customElement('bible-reading-calendar')
 export class BibleReadingCalendar extends LitElement {
 
@@ -86,7 +37,7 @@ export class BibleReadingCalendar extends LitElement {
     
     for (;year>theyear-1;year--) {
       if (reportedFlag) break;
-      for (;month>0; month--) {
+      for (;month>=0; month--) {
         if (reportedFlag) break;
         readingData[month] = [];
         var day = (month<themonth || year<theyear) ? daysInMonth(month, year) : theday;
@@ -111,12 +62,10 @@ export class BibleReadingCalendar extends LitElement {
             if (rData && !reportedFlag) {
               reportedFlag = true;
               this.currentReadingDate = new Date(year, month, day);
-              this.dispatchEvent(new CustomEvent<ReadingData>('reading-date-selected', {
-                detail: {
-                  date: this.currentReadingDate,
-                  reading: rData
-                }
-              }) as ReadingDateSelectedEvent)
+              this.reportData({
+                date: this.currentReadingDate,
+                reading: rData
+              })
             }
           });
           
@@ -124,6 +73,65 @@ export class BibleReadingCalendar extends LitElement {
       }
     }
     return readingData
+  }
+
+  private genMonth(data:string[][], currentReadingDate: Date = new Date()) {
+    const week = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
+    let month = currentReadingDate.getMonth();
+    let year = currentReadingDate.getFullYear();
+    let theday = currentReadingDate.getDate();
+    let day1 = new Date(year, month, 1); 
+    let offset = (day1.getDay()+7-1)%7 || 7;
+    let length = daysInMonth(month, year);
+    let gen = ['prev'].concat(data[month], Array(length-(data[month] || []).length).fill(''),'next');
+    
+    return html`<table class="calendar">
+      <thead><tr>${week.map(d => html`<th>${d}</th>`)}</tr></thead>
+      <tbody>
+        ${gen.reduce<TemplateResult[]>(
+          (table: TemplateResult[], rd, dn, dt) => {
+            let wd = (dn+offset-1)%7; //zero-based weekday num
+            if (dn == 0 || wd == 0) table.push(html`<tr class="week">`);
+            if (dn == 0) {
+              table.push(
+                html`<td colspan="${offset}" class="day empty tomonth" @click="${()=>{
+                  this.date = new Date(year, month, 0);
+                }}"></td>`
+              )
+            } else if (dn == dt.length-1) {
+              table.push(
+                html`<td colspan="${7-wd}" class="day empty tomonth" @click="${()=>{
+                  this.date = new Date(year, month+1, 1);
+                }}"></td>`
+              );
+              wd = 6;
+            } else {
+              table.push(html`<td class="${classMap({day:true,weekend:wd>4,empty: !(rd)})}" @click=${() => {
+                if (dn!== theday) {
+                  this.currentReadingDate = new Date(year, month, dn);
+                  this.reportData({date: this.currentReadingDate, reading: rd})
+                }
+              }}>${
+              (dn == theday)
+              ? html`<b>${dn}</b>`
+              : dn
+            }</td>`)
+            }
+            if (wd == 6) table.push(html`</tr>`);
+            return table
+          },
+          []
+        )}
+      </tbody>
+    </table>`
+  }
+
+  private reportData(reading: ReadingData) {
+    this.dispatchEvent(new CustomEvent<ReadingData>('reading-date-selected', {
+      detail: reading,
+      bubbles: true,
+      composed: true
+    }) as ReadingDateSelectedEvent)
   }
   
   protected updated(_changedProperties: PropertyValueMap<this> | Map<PropertyKey, unknown>): void {
@@ -144,7 +152,7 @@ export class BibleReadingCalendar extends LitElement {
         {dateStyle: 'long'}
       )}<input type=checkbox id="date-selector-switch" hidden />
       <div class="date-selector">
-        ${this.currentReadingDate ? genMonth(this.monthReading, this.currentReadingDate): nothing}
+        ${this.genMonth(this.monthReading, this.currentReadingDate)}
       </div>
     </label>
     
