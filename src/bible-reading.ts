@@ -7,6 +7,16 @@ import "./bible-reading-calendar.js";
 import { BibleReadingCalendar, ReadingDateSelectedEvent } from "./bible-reading-calendar.js";
 import { BibleExcerpt } from "./bible-excerpt.js";
 
+/**
+ * Custom Element that loads Markdown file with the questions on Bible excerpt
+ * and presents the excerpt itself with some extra utility stuff like hilighting 
+ * verses, referenced in questions.
+ * Also it lets user to get month view of readings and load another day's reading
+ *
+ * @export
+ * @class BibleReading
+ * @extends {LitElement}
+ */
 @customElement('bible-reading')
 export class BibleReading extends LitElement {
 
