@@ -1,6 +1,7 @@
-import { LitElement, PropertyValueMap, TemplateResult, css, html } from "lit";
+import { LitElement, PropertyValueMap, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 export declare interface ReadingData {
   date: Date;
@@ -83,47 +84,37 @@ export class BibleReadingCalendar extends LitElement {
     let day1 = new Date(year, month, 1); 
     let offset = (day1.getDay()+7-1)%7 || 7;
     let length = daysInMonth(month, year);
-    let gen = ['prev'].concat(data[month], Array(length-(data[month] || []).length).fill(''),'next');
-    
-    return html`<table class="calendar">
-      <thead><tr>${week.map(d => html`<th>${d}</th>`)}</tr></thead>
-      <tbody>
-        ${gen.reduce<TemplateResult[]>(
-          (table: TemplateResult[], rd, dn, dt) => {
-            let wd = (dn+offset-1)%7; //zero-based weekday num
-            if (dn == 0 || wd == 0) table.push(html`<tr class="week">`);
-            if (dn == 0) {
-              table.push(
-                html`<td colspan="${offset}" class="day empty tomonth" @click="${()=>{
-                  this.date = new Date(year, month, 0);
-                }}"></td>`
-              )
-            } else if (dn == dt.length-1) {
-              table.push(
-                html`<td colspan="${7-wd}" class="day empty tomonth" @click="${()=>{
-                  this.date = new Date(year, month+1, 1);
-                }}"></td>`
-              );
-              wd = 6;
-            } else {
-              table.push(html`<td class="${classMap({day:true,weekend:wd>4,empty: !(rd)})}" @click=${() => {
-                if (dn!== theday) {
-                  this.currentReadingDate = new Date(year, month, dn);
-                  this.reportData({date: this.currentReadingDate, reading: rd})
-                }
-              }}>${
-              (dn == theday)
-              ? html`<b>${dn}</b>`
-              : dn
-            }</td>`)
-            }
-            if (wd == 6) table.push(html`</tr>`);
-            return table
-          },
-          []
-        )}
-      </tbody>
-    </table>`
+    let monthData = (data[month] || []);
+    let gen = ['prev', ...(monthData.concat(Array(length-monthData.length).fill(''))), 'next'];
+    return html`<section class="calendar">
+      ${week.map(d => html`<div class="day header">${d}</div>`)}
+      ${gen.map(
+        (d, n, a) => {
+          let dw = (n+offset-1)%7;
+          let today = (n == theday);
+          let ffwd = (n == a.length-1);
+          let rewd = (n == 0);
+          return html`<div class="${classMap({
+            day: true,
+            ffwd,
+            rewd,
+            empty: (d == '' || ffwd || rewd),
+            selected: today,
+            weekend: dw>4
+          })}"
+          style="${styleMap({
+            'grid-column': `span ${rewd ? offset : (ffwd ? 7-dw : 1)}`
+          })}"
+          @click="${() => {
+            if (rewd) this.date = new Date(year, month, 0)
+            else if (ffwd) this.date = new Date(year, month+2, 0)
+            else if (!today) this.reportData({
+              date: this.currentReadingDate = new Date(year, month, n), 
+              reading: d
+            });
+          }}">${n}</div>`
+        }
+      )}</section>`
   }
 
   private reportData(reading: ReadingData) {
@@ -217,37 +208,36 @@ export class BibleReadingCalendar extends LitElement {
     .calendar {
       border-radius: 0.2em;
       border: none;
-      border-spacing: 0;
-      .day:hover {
-        background-color: #ccc;
-        &:not(.empty) {
-          background-color: #cdf;
+      display: grid;
+      grid-template-columns: repeat(7, 2em);
+      .day {
+        &:not(.header) {
+          &:hover {
+            background-color: #ccc;
+            &:not(.empty) {
+              background-color: #cdf;
+            }
+          }
+        }
+        &.header, &.selected {
+          font-weight: bold;
         }
       }
       .weekend, .empty {
         background-color: #e0e0e0;
         color: #464646;
       }
-      tbody {
-        border-radius: 0.5em;
+      .rewd, .ffwd {
+        color: transparent;
+        text-align: center;
       }
-      .week {
-        &:first-of-type .day {
-          &:first-of-type {
-            border-radius: 0.5em 0 0 0;
-          }
-          &:last-of-type {
-            border-radius: 0 0.5em 0 0;
-          }
-        }
-        &:last-of-type .day {
-          &:first-of-type {
-            border-radius: 0 0 0 0.5em;
-          }
-          &:last-of-type {
-            border-radius: 0 0 0.5em 0;
-          }
-        }
+      .rewd::after {
+        content: '<<';
+        color: #242424;
+      }
+      .ffwd::before {
+        content: '>>';
+        color: #242424;
       }
     }
     `
