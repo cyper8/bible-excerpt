@@ -24,8 +24,8 @@ export class BibleReading extends LitElement {
   @state() chapter: string = '';
   @state() verses: string = '';
 
-  @property({type: String}) translation: string = 'UBIO';
-  @property({type: String}) content: string = '';
+  @property({ type: String }) translation: string = 'UBIO';
+  @property({ type: String }) content: string = '';
 
   private processContent() {
     if (this.shadowRoot) {
@@ -35,10 +35,10 @@ export class BibleReading extends LitElement {
         if (refText) {
           let ref = refText.match(/ [0-9, :-]+$/g)?.[0].split(',')[0].trim() || '';
           this.book = refText.replace(ref, '').trim();
-          [this.chapter, this.verses] = ref.split(':',2);
+          [this.chapter, this.verses] = ref.split(':', 2);
           var node: Text, textIterator = document.createNodeIterator(
-            this.shadowRoot, 
-            NodeFilter.SHOW_TEXT, 
+            this.shadowRoot,
+            NodeFilter.SHOW_TEXT,
             (node: Node) => {
               let search = node.textContent?.match(/([0-9,іта -]*вірш[^)\s]*[0-9,іта -]*)/gmi);
               if (search?.length) {
@@ -55,15 +55,15 @@ export class BibleReading extends LitElement {
               for (const match of refs) {
                 let ref = node.splitText(match.index);
                 let rest = ref.splitText(match[0].length);
-                let u = document.createElement('u');
-                u.appendChild(ref);
-                node.parentElement?.insertBefore(u,rest);
-                u.className="ref-verses";
+                let a = document.createElement('a');
+                a.appendChild(ref);
+                node.parentElement?.insertBefore(a, rest);
+                a.className = "ref-verses";
                 let vs = match[0].match(/[0-9-]+/g)?.filter(v => v).join(',');
-                u.addEventListener('click', (_event) => {
+                a.addEventListener('click', (_event) => {
                   let excerpt = this.shadowRoot?.querySelector('bible-excerpt');
                   if (excerpt)
-                  excerpt.hilightVerses = excerpt.hilightVerses ? '' : vs || '';
+                    excerpt.hilightVerses = excerpt.hilightVerses ? '' : vs || '';
                 })
               }
             }
@@ -75,13 +75,13 @@ export class BibleReading extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.content = marked.parse(this.innerHTML, {async: false});
+    this.content = marked.parse(this.innerHTML, { async: false });
   }
 
   protected willUpdate(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
     if (_changedProperties.has("content")) {
       if (this.content) {
-        this.content = marked.parse(this.content, {async: false});
+        this.content = marked.parse(this.content, { async: false });
       }
     }
   }
@@ -96,9 +96,8 @@ export class BibleReading extends LitElement {
 
   protected render(): unknown {
     return html`<bible-reading-calendar @reading-date-selected="${(event: ReadingDateSelectedEvent) => {
-                  this.content = event.detail.reading;
-                }}"></bible-reading-calendar>${
-      this.book && this.chapter
+      this.content = event.detail.reading;
+    }}"></bible-reading-calendar>${this.book && this.chapter
       ? html`
         <bible-excerpt
           translation="${this.translation}" 
@@ -107,17 +106,22 @@ export class BibleReading extends LitElement {
           verses="${this.verses || ''}">
         </bible-excerpt>`
       : nothing
-    }${unsafeHTML(this.content)}`
+      }${unsafeHTML(this.content)}`
   }
 
   static get styles() {
     return css`
     :host {
-      display: block
+      display: block;
+      padding: 1em;
     }
-    .ref-verses {
-      color: #59f;
-      cursor: pointer;
+    a {
+      font-weight: 500;
+      color: var(--bible-excerpt-accent);
+      text-decoration: inherit;
+    }
+    a:hover {
+      color: var(--bible-excerpt-dark-accent)
     }
     `
   }
@@ -128,5 +132,5 @@ declare global {
     'bible-excerpt': BibleExcerpt;
     'bible-reading': BibleReading;
     'bible-reading-calendar': BibleReadingCalendar;
-  } 
+  }
 }

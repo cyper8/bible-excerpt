@@ -15,7 +15,7 @@ export declare type ReadingDateSelectedEvent = CustomEvent<ReadingData> & {
 export const daysInMonth = (m0: number, y?: number) => {
   let d = new Date();
   d.setFullYear(y || d.getFullYear())
-  d.setMonth(m0+1);
+  d.setMonth(m0 + 1);
   d.setDate(0);
   return d.getDate()
 }
@@ -25,28 +25,28 @@ export class BibleReadingCalendar extends LitElement {
 
   @state() monthReading: string[][] = [];
   @state() currentReadingDate?: Date;
-  @property({type: Date}) date: Date = new Date();
+  @property({ type: Date }) date: Date = new Date();
 
   async fetchDataFor(thedate: Date): Promise<string[][]> {
-    var readingData:string[][] = [],
+    var readingData: string[][] = [],
       reportedFlag: boolean = false,
       theyear = thedate.getFullYear(),
       themonth = thedate.getMonth(),
       theday = thedate.getDate(),
       year = theyear,
       month = themonth;
-    
-    for (;year>theyear-1;year--) {
+
+    for (; year > theyear - 1; year--) {
       if (reportedFlag) break;
-      for (;month>=0; month--) {
+      for (; month >= 0; month--) {
         if (reportedFlag) break;
         readingData[month] = [];
-        var day = (month<themonth || year<theyear) ? daysInMonth(month, year) : theday;
-        for (;day>0;day--) {
+        var day = (month < themonth || year < theyear) ? daysInMonth(month, year) : theday;
+        for (; day > 0; day--) {
           await fetch(
-            `/${year}/${month+1}/${day}.md`, 
+            `/${year}/${month + 1}/${day}.md`,
             {
-              method: 'GET', 
+              method: 'GET',
               redirect: 'error',
               headers: {
                 'Content-Type': 'text/markdown',
@@ -58,63 +58,63 @@ export class BibleReadingCalendar extends LitElement {
               return res.text()
             } else return ''
           })
-          .then(rData => {
-            readingData[month][day-1] = rData;
-            if (rData && !reportedFlag) {
-              reportedFlag = true;
-              this.currentReadingDate = new Date(year, month, day);
-              this.reportData({
-                date: this.currentReadingDate,
-                reading: rData
-              })
-            }
-          });
-          
+            .then(rData => {
+              readingData[month][day - 1] = rData;
+              if (rData && !reportedFlag) {
+                reportedFlag = true;
+                this.currentReadingDate = new Date(year, month, day);
+                this.reportData({
+                  date: this.currentReadingDate,
+                  reading: rData
+                })
+              }
+            });
+
         }
       }
     }
     return readingData
   }
 
-  private genMonth(data:string[][], currentReadingDate: Date = new Date()) {
+  private genMonth(data: string[][], currentReadingDate: Date = new Date()) {
     const week = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
     let month = currentReadingDate.getMonth();
     let year = currentReadingDate.getFullYear();
     let theday = currentReadingDate.getDate();
-    let day1 = new Date(year, month, 1); 
-    let offset = (day1.getDay()+7-1)%7 || 7;
+    let day1 = new Date(year, month, 1);
+    let offset = (day1.getDay() + 7 - 1) % 7 || 7;
     let length = daysInMonth(month, year);
     let monthData = (data[month] || []);
-    let gen = ['prev', ...(monthData.concat(Array(length-monthData.length).fill(''))), 'next'];
+    let gen = ['prev', ...(monthData.concat(Array(length - monthData.length).fill(''))), 'next'];
     return html`<section class="calendar">
       ${week.map(d => html`<div class="day header">${d}</div>`)}
       ${gen.map(
-        (d, n, a) => {
-          let dw = (n+offset-1)%7;
-          let today = (n == theday);
-          let ffwd = (n == a.length-1);
-          let rewd = (n == 0);
-          return html`<div class="${classMap({
-            day: true,
-            ffwd,
-            rewd,
-            empty: (d == '' || ffwd || rewd),
-            selected: today,
-            weekend: dw>4
-          })}"
+      (d, n, a) => {
+        let dw = (n + offset - 1) % 7;
+        let today = (n == theday);
+        let ffwd = (n == a.length - 1);
+        let rewd = (n == 0);
+        return html`<div class="${classMap({
+          day: true,
+          ffwd,
+          rewd,
+          empty: (d == '' || ffwd || rewd),
+          selected: today,
+          weekend: dw > 4
+        })}"
           style="${styleMap({
-            'grid-column': `span ${rewd ? offset : (ffwd ? 7-dw : 1)}`
-          })}"
+          'grid-column': `span ${rewd ? offset : (ffwd ? 7 - dw : 1)}`
+        })}"
           @click="${() => {
             if (rewd) this.date = new Date(year, month, 0)
-            else if (ffwd) this.date = new Date(year, month+2, 0)
+            else if (ffwd) this.date = new Date(year, month + 2, 0)
             else if (!today) this.reportData({
-              date: this.currentReadingDate = new Date(year, month, n), 
+              date: this.currentReadingDate = new Date(year, month, n),
               reading: d
             });
           }}">${n}</div>`
-        }
-      )}</section>`
+      }
+    )}</section>`
   }
 
   private reportData(reading: ReadingData) {
@@ -124,7 +124,7 @@ export class BibleReadingCalendar extends LitElement {
       composed: true
     }) as ReadingDateSelectedEvent)
   }
-  
+
   protected updated(_changedProperties: PropertyValueMap<this> | Map<PropertyKey, unknown>): void {
     if (_changedProperties.has("date")) {
       this.fetchDataFor(this.date).then((res) => {
@@ -139,9 +139,9 @@ export class BibleReadingCalendar extends LitElement {
     return html`
     <label class="icon" id="clock" for="date-selector-switch">
       ${(this.currentReadingDate || this.date).toLocaleDateString(
-        navigator.language,
-        {dateStyle: 'long'}
-      )}<input type=checkbox id="date-selector-switch" hidden />
+      navigator.language,
+      { dateStyle: 'long' }
+    )}<input type=checkbox id="date-selector-switch" hidden />
       <div class="date-selector">
         ${this.genMonth(this.monthReading, this.currentReadingDate)}
       </div>
@@ -150,15 +150,14 @@ export class BibleReadingCalendar extends LitElement {
     `
   }
 
-  static get styles () {
+  static get styles() {
     return css`
     :host {
       display: inline-block;
       margin: 0.2em;
       padding: 0.2em;
-      border: solid 1px #eee;
+      border: solid 1px var(--bible-excerpt-color);
       border-radius: 1.2em;
-      color: #eee;
       line-height: 2em
     }
     #clock.icon {
@@ -171,20 +170,20 @@ export class BibleReadingCalendar extends LitElement {
       float: left;
       width: 1.5em;
       height: 1.5em;
-      border: solid 0.1px #eee;
       border-radius: 50%;
-      background-color: #eee;
+      background-color: currentColor;
       position: relative;
     }
     #clock.icon::after {
       content: '';
-      width: 0;
+      width: 0.1em;
       height: 0.5em;
-      border: solid 0.05em #242424;
+      border: none ;
       border-radius: 0.05em;
       position: absolute;
       left: -1.05em;
       top: 0.05em;
+      background-color: var(--bible-excerpt-background);
       transform-origin: center bottom;
       transform: rotate(35deg);
       transition: transform 2s linear;
@@ -197,8 +196,8 @@ export class BibleReadingCalendar extends LitElement {
       position: absolute;
       width: auto;
       height: auto;
-      background-color: #eee;
-      color: #242424;
+      background-color: var(--bible-excerpt-color);
+      color: var(--bible-excerpt-background);
       border-radius: 1em;
       padding: 1em;
     }
@@ -213,9 +212,9 @@ export class BibleReadingCalendar extends LitElement {
       .day {
         &:not(.header) {
           &:hover {
-            background-color: #ccc;
+            background-color: var(--bible-excerpt-hilight, rgba(200,200,200,0.3));
             &:not(.empty) {
-              background-color: #cdf;
+              background-color: var(--bible-excerpt-hilight-accent, rgba(200,225,255,0.3));
             }
           }
         }
@@ -224,8 +223,7 @@ export class BibleReadingCalendar extends LitElement {
         }
       }
       .weekend, .empty {
-        background-color: #e0e0e0;
-        color: #464646;
+        filter: brightness(80%);
       }
       .rewd, .ffwd {
         color: transparent;
@@ -233,11 +231,11 @@ export class BibleReadingCalendar extends LitElement {
       }
       .rewd::after {
         content: '<<';
-        color: #242424;
+        color: var(--bible-excerpt-background);
       }
       .ffwd::before {
         content: '>>';
-        color: #242424;
+        color: var(--bible-excerpt-background);
       }
     }
     `

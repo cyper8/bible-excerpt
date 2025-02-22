@@ -56,10 +56,10 @@ const spreadNumbers = (numlist: string, length?: number) => numlist.split(',')
   .reduce((numRanges: number[], entry) => {
     let boundaries = entry.trim().split('-');
     let first = parseInt(boundaries[0]) || 1;
-    let last = parseInt(boundaries[boundaries.length-1]) || length || first;
+    let last = parseInt(boundaries[boundaries.length - 1]) || length || first;
     while (entry && first <= last) {
       numRanges.push(first++);
-    } 
+    }
     return numRanges;
   }, []);
 
@@ -94,19 +94,19 @@ export class BibleExcerpt extends LitElement {
     return html`<input type=radio name="note" id="verse${verse.verse}" class="note" />
     <label for="verse${verse.verse}">
       <p 
-      class="${classMap({verse: true, hilight})}"
+      class="${classMap({ verse: true, hilight })}"
       pk="${verse.pk}" 
       chapter="${verse.chapter}" 
       num="${verse.verse}"
       >
           ${verse.text}
-          ${verse.comment 
-            ? html`<b>&darr;</b>  
+          ${verse.comment
+        ? html`<b>&darr;</b>  
             <span class="comment">
             <hr />
               ${unsafeHTML(verse.comment)}
-            </span>` 
-            : nothing}
+            </span>`
+        : nothing}
       </p>
     </label>`
   }
@@ -114,18 +114,18 @@ export class BibleExcerpt extends LitElement {
   private bExcerpt(chapter: BChapterVerses, verses: string, hilight: string = '') {
     let hilighted = spreadNumbers(hilight);
     return spreadNumbers(verses ? verses : "1-", chapter.length)
-    .map(vnum => chapter[vnum - 1]).filter(v => v)
-    .map(v => this.bChapterVerse(v, hilighted.includes(v?.verse)))
+      .map(vnum => chapter[vnum - 1]).filter(v => v)
+      .map(v => this.bChapterVerse(v, hilighted.includes(v?.verse)))
   }
 
   protected willUpdate(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
     if (_changedProperties.has("book")
       || _changedProperties.has("chapter")
       || _changedProperties.has("verses")) {
-        BibleExcerpt.bBible
+      BibleExcerpt.bBible
         .then(([_langs, books]) => {
           if (this.translation in books) {
-            let booknum = books[this.translation].findIndex(book => book.name === this.book)+1;
+            let booknum = books[this.translation].findIndex(book => book.name === this.book) + 1;
             if (booknum)
               return fetch(
                 `https://bolls.life/get-chapter/${this.translation}/${booknum}/${this.chapter}/`,
@@ -136,22 +136,21 @@ export class BibleExcerpt extends LitElement {
                 }
               )
                 .then<BChapterVerses>((res) => res.json())
-                .then(verses =>
-                  {
-                    this.excerpt = verses;
-                  })
-              else throw new Error(`помилка запиту`)
+                .then(verses => {
+                  this.excerpt = verses;
+                })
+            else throw new Error(`помилка запиту`)
           } else throw new Error(`Помилка: перекладу не знайдено`)
         })
         .catch(console.error);
-      }
+    }
   }
 
   render() {
     return html`<h1>${this.book} ${this.chapter}${this.verses ? `:${this.verses}` : ''}</h1>
     ${until(
-      BibleExcerpt.bBible.then(([langs, _books]) => 
-        html`${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}`), 
+      BibleExcerpt.bBible.then(([langs, _books]) =>
+        html`${this.selectTranslation ? this.renderManualModeControls(langs) : nothing}`),
       nothing)}
     ${this.bExcerpt(this.excerpt, this.verses, this.hilightVerses)}`;
   }
@@ -161,8 +160,7 @@ export class BibleExcerpt extends LitElement {
   :host {
     display: block;
     padding: 2.5em;
-    margin: 1em;
-    border: solid 1px #555;
+    border: solid 1px var(--bible-excerpt-color, #555);
     border-radius: 0.5em;
   }
   .verse::before {
@@ -179,15 +177,15 @@ export class BibleExcerpt extends LitElement {
     display: none
   }
   .verse.hilight {
-    background-color: #765;
+    background-color: var(--bible-excerpt-hilight-accent, #765);
   } 
   .verse:hover {
-    background-color: #555;
+    background-color: var(--bible-excerpt-hilight, #555);
   }
   span.comment {
     display: none;
-    background: #eee;
-    color: black;
+    background: var(--bible-excerpt-color);
+    color: var(--bible-excerpt-background);
     position: fixed;
     left: 0px;
     height: auto;
