@@ -44,7 +44,7 @@ export class BibleReadingCalendar extends LitElement {
         var day = (month < themonth || year < theyear) ? daysInMonth(month, year) : theday;
         for (; day > 0; day--) {
           await fetch(
-            `/${year}/${month + 1}/${day}.md`,
+            `./${year}/${month + 1}/${day}.md`,
             {
               method: 'GET',
               redirect: 'error',
